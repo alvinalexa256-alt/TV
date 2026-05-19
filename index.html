@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Sports 803 – Live TV Manager</title>
+    <!-- Firebase SDKs (compat mode) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0b0b0b;
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            padding: 24px 16px 40px;
+            color: #f0ede8;
+        }
+
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 28px;
+            border-bottom: 1px solid #2a2a2a;
+            padding-bottom: 16px;
+        }
+        .logo h1 {
+            font-size: 1.8rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #e03030, #ff6b6b);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+        .logo p {
+            font-size: 0.75rem;
+            color: #6a6a6a;
+        }
+        .pin-badge {
+            background: #1e1e1e;
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border: 1px solid #333;
+        }
+
+        /* Card */
+        .card {
+            background: #111;
+            border: 1px solid #2a2a2a;
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 24px;
+            transition: border-color 0.2s;
+        }
+        .card:hover {
+            border-color: #3a3a3a;
+        }
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-left: 3px solid #e03030;
+            padding-left: 12px;
+        }
+
+        /* Form */
+        .form-group {
+            margin-bottom: 16px;
+        }
+        label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #aaa;
+            margin-bottom: 6px;
+        }
+        input, textarea {
+            width: 100%;
+            background: #1c1c1c;
+            border: 1px solid #2e2e2e;
+            border-radius: 12px;
+            padding: 12px 14px;
+            color: #fff;
+            font-size: 0.9rem;
+            transition: 0.2s;
+        }
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #e03030;
+            box-shadow: 0 0 0 2px rgba(224,48,48,0.2);
+        }
+        button {
+            background: #e03030;
+            border: none;
+            border-radius: 40px;
+            padding: 10px 20px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: white;
+            cursor: pointer;
+            transition: 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            position: relative;
+        }
+        button:hover:not(:disabled) {
+            background: #b81c1c;
+            transform: translateY(-1px);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        button.secondary {
+            background: #2a2a2a;
+            border: 1px solid #3a3a3a;
+        }
+        button.secondary:hover:not(:disabled) {
+            background: #3a3a3a;
+        }
+        .danger {
+            background: #5a1e1e;
+            color: #ff9e9e;
+        }
+        .danger:hover:not(:disabled) {
+            background: #7a2a2a;
+        }
+
+        /* Channel list */
+        .channel-item {
+            background: #0e0e0e;
+            border: 1px solid #222;
+            border-radius: 14px;
+            padding: 14px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .channel-item:hover {
+            border-color: #3a3a3a;
+            background: #121212;
+        }
+        .channel-info {
+            flex: 2;
+            min-width: 150px;
+        }
+        .channel-name {
+            font-weight: 700;
+            font-size: 1rem;
+            margin-bottom: 4px;
+            word-break: break-word;
+        }
+        .channel-url {
+            font-size: 0.7rem;
+            color: #888;
+            word-break: break-all;
+            font-family: monospace;
+        }
+        .channel-logo {
+            width: 48px;
+            height: 48px;
+            background: #1a1a1a;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .channel-logo img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        .channel-actions {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+        .empty-msg {
+            text-align: center;
+            color: #555;
+            padding: 30px;
+            font-size: 0.9rem;
+        }
+
+        /* Status messages */
+        .status {
+            margin-top: 12px;
+            font-size: 0.8rem;
+            padding: 8px 12px;
+            border-radius: 30px;
+            text-align: center;
+            animation: fadeIn 0.2s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .status.success {
+            background: rgba(34,197,94,0.15);
+            color: #22c55e;
+            border: 1px solid rgba(34,197,94,0.3);
+        }
+        .status.error {
+            background: rgba(224,48,48,0.15);
+            color: #ff6b6b;
+            border: 1px solid rgba(224,48,48,0.3);
+        }
+        .status.info {
+            background: rgba(59,130,246,0.15);
+            color: #60a5fa;
+            border: 1px solid rgba(59,130,246,0.3);
+        }
+
+        /* Inline form buttons */
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        hr {
+            border-color: #2a2a2a;
+            margin: 18px 0;
+        }
+        footer {
+            text-align: center;
+            font-size: 0.7rem;
+            color: #444;
+            margin-top: 32px;
+        }
+
+        /* Loading spinner inside button */
+        .spinner {
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div class="logo">
+            <h1>📺 Sports 803 · Live TV</h1>
+            <p>Manage channels – instantly syncs with website</p>
+        </div>
+        <div class="pin-badge" id="pinStatusBadge">🔒 PIN protected</div>
+    </div>
+
+    <!-- Admin area (visible after correct PIN) -->
+    <div id="adminArea" style="display: none;">
+        <!-- Add / Edit Channel Card -->
+        <div class="card">
+            <div class="card-title" id="formCardTitle">➕ Add new channel</div>
+            <div class="form-group">
+                <label for="chName">Channel name *</label>
+                <input type="text" id="chName" placeholder="e.g., ESPN, Sky Sports, TNT Sports" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label for="chUrl">Stream URL * (embed / m3u8 / direct link)</label>
+                <input type="text" id="chUrl" placeholder="https://example.com/stream.m3u8 or embed URL" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label for="chLogo">Logo URL (optional)</label>
+                <input type="text" id="chLogo" placeholder="https://example.com/logo.png" autocomplete="off">
+            </div>
+            <div class="form-actions">
+                <button id="submitChannelBtn">➕ Add Channel</button>
+                <button id="cancelEditBtn" class="secondary" style="display: none;">✕ Cancel Edit</button>
+                <span id="editingIndicator" style="font-size:0.75rem; color:#60a5fa; display:none;">Editing channel…</span>
+            </div>
+            <div id="addStatus"></div>
+        </div>
+
+        <!-- Channel List -->
+        <div class="card">
+            <div class="card-title">📡 Current channels (visible on Sports 803)</div>
+            <div id="channelsList">
+                <div class="empty-msg">Loading channels...</div>
+            </div>
+        </div>
+
+        <!-- Danger Zone -->
+        <div class="card">
+            <div class="card-title">⚙️ Danger zone</div>
+            <button id="clearAllBtn" class="danger">🗑️ Delete ALL channels</button>
+            <div style="margin-top: 10px; font-size: 0.7rem; color:#666;">This action cannot be undone.</div>
+        </div>
+    </div>
+
+    <footer>
+        Sports 803 – Live TV Manager | Changes appear instantly on the website
+    </footer>
+</div>
+
+<!-- PIN protection modal -->
+<div id="pinModal" class="modal" style="display: flex;">
+    <div class="modal-card">
+        <h3 style="margin-bottom: 8px;">🔐 Admin PIN required</h3>
+        <p style="font-size: 0.75rem; color:#aaa;">Enter the PIN to manage TV channels</p>
+        <input type="password" id="pinInput" class="pin-input" maxlength="4" autocomplete="off" placeholder="••••">
+        <div id="pinError" class="pin-error"></div>
+        <button id="verifyPinBtn" style="margin-top: 12px;">Unlock</button>
+    </div>
+</div>
+
+<script>
+    // ---------- Firebase Initialization ----------
+    const firebaseConfig = {
+        apiKey: "AIzaSyCc3EouS5NXhmbVrVyQIfyx2Dy8RlnyQUU",
+        authDomain: "sports-803-1b806.firebaseapp.com",
+        databaseURL: "https://sports-803-1b806-default-rtdb.firebaseio.com",
+        projectId: "sports-803-1b806",
+        storageBucket: "sports-803-1b806.firebasestorage.app",
+        messagingSenderId: "655881545685",
+        appId: "1:655881545685:web:0781db29504ecb7c817f5c"
+    };
+
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.database();
+    const channelsRef = db.ref('livetv/channels');
+
+    // ---------- PIN Verification ----------
+    const ADMIN_PIN = "8033";
+    let isUnlocked = false;
+    let editingKey = null; // Firebase key of channel being edited
+
+    const pinModal = document.getElementById('pinModal');
+    const adminArea = document.getElementById('adminArea');
+    const pinInput = document.getElementById('pinInput');
+    const pinError = document.getElementById('pinError');
+    const verifyPinBtn = document.getElementById('verifyPinBtn');
+    const pinStatusBadge = document.getElementById('pinStatusBadge');
+
+    function showAdminArea() {
+        adminArea.style.display = 'block';
+        pinModal.style.display = 'none';
+        pinStatusBadge.innerHTML = '🔓 Admin mode';
+        pinStatusBadge.style.background = '#1e4a1e';
+        loadChannels();
+    }
+
+    function showPinModal() {
+        adminArea.style.display = 'none';
+        pinModal.style.display = 'flex';
+        pinInput.value = '';
+        pinError.innerText = '';
+        pinStatusBadge.innerHTML = '🔒 PIN protected';
+        pinStatusBadge.style.background = '#1e1e1e';
+    }
+
+    // Check session storage for previous unlock
+    if (sessionStorage.getItem('ltv_admin_unlocked') === 'true') {
+        isUnlocked = true;
+        showAdminArea();
+    } else {
+        showPinModal();
+    }
+
+    verifyPinBtn.addEventListener('click', () => {
+        const pin = pinInput.value.trim();
+        if (pin === ADMIN_PIN) {
+            isUnlocked = true;
+            sessionStorage.setItem('ltv_admin_unlocked', 'true');
+            showAdminArea();
+        } else {
+            pinError.innerText = '❌ Incorrect PIN. Access denied.';
+        }
+    });
+
+    pinInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') verifyPinBtn.click();
+    });
+
+    // ---------- DOM Elements ----------
+    const formCardTitle = document.getElementById('formCardTitle');
+    const chNameInput = document.getElementById('chName');
+    const chUrlInput = document.getElementById('chUrl');
+    const chLogoInput = document.getElementById('chLogo');
+    const submitChannelBtn = document.getElementById('submitChannelBtn');
+    const cancelEditBtn = document.getElementById('cancelEditBtn');
+    const editingIndicator = document.getElementById('editingIndicator');
+    const channelsListDiv = document.getElementById('channelsList');
+    const addStatusDiv = document.getElementById('addStatus');
+    const clearAllBtn = document.getElementById('clearAllBtn');
+
+    // ---------- Form Mode Management ----------
+    function resetFormToAddMode() {
+        editingKey = null;
+        chNameInput.value = '';
+        chUrlInput.value = '';
+        chLogoInput.value = '';
+        submitChannelBtn.innerHTML = '➕ Add Channel';
+        formCardTitle.innerHTML = '➕ Add new channel';
+        cancelEditBtn.style.display = 'none';
+        editingIndicator.style.display = 'none';
+        // Enable button in case it was disabled
+        submitChannelBtn.disabled = false;
+        clearStatus('addStatus');
+    }
+
+    function enterEditMode(key, channel) {
+        editingKey = key;
+        chNameInput.value = channel.name || '';
+        chUrlInput.value = channel.url || '';
+        chLogoInput.value = channel.logo || '';
+        submitChannelBtn.innerHTML = '✏️ Update Channel';
+        formCardTitle.innerHTML = '✏️ Edit channel';
+        cancelEditBtn.style.display = 'inline-flex';
+        editingIndicator.style.display = 'inline';
+        editingIndicator.innerText = `Editing: ${channel.name || 'Unnamed'}`;
+        submitChannelBtn.disabled = false; // ensure enabled
+        clearStatus('addStatus');
+        chNameInput.focus();
+    }
+
+    cancelEditBtn.addEventListener('click', resetFormToAddMode);
+
+    // ---------- Helper: Show Status Message ----------
+    function showStatus(message, type = 'info') {
+        addStatusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+        // Auto-dismiss after 4 seconds
+        setTimeout(() => {
+            if (addStatusDiv.innerHTML !== '') {
+                addStatusDiv.innerHTML = '';
+            }
+        }, 4000);
+    }
+
+    function clearStatus() {
+        addStatusDiv.innerHTML = '';
+    }
+
+    // ---------- Escape HTML ----------
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    // ---------- Button Loading State ----------
+    function setButtonLoading(btn, isLoading) {
+        if (isLoading) {
+            btn.disabled = true;
+            btn.setAttribute('data-original-text', btn.innerHTML);
+            btn.innerHTML = '<span class="spinner"></span> Processing…';
+        } else {
+            btn.disabled = false;
+            if (btn.hasAttribute('data-original-text')) {
+                btn.innerHTML = btn.getAttribute('data-original-text');
+                btn.removeAttribute('data-original-text');
+            }
+        }
+    }
+
+    // ---------- Load & Display Channels ----------
+    async function loadChannels() {
+        channelsListDiv.innerHTML = '<div class="empty-msg">Loading channels...</div>';
+        try {
+            const snapshot = await channelsRef.once('value');
+            const channels = snapshot.val();
+            if (!channels || Object.keys(channels).length === 0) {
+                channelsListDiv.innerHTML = '<div class="empty-msg">📭 No channels added yet. Use the form above to add one.</div>';
+                return;
+            }
+
+            let html = '';
+            Object.keys(channels).forEach(key => {
+                const ch = channels[key];
+                const name = ch.name || 'Unnamed';
+                const url = ch.url || '#';
+                const logo = ch.logo || '';
+                const logoHtml = logo
+                    ? `<img src="${escapeHtml(logo)}" alt="${escapeHtml(name)} logo" onerror="this.parentNode.innerHTML='📺'">`
+                    : '📺';
+                html += `
+                    <div class="channel-item" data-key="${key}">
+                        <div class="channel-logo">${logoHtml}</div>
+                        <div class="channel-info">
+                            <div class="channel-name">${escapeHtml(name)}</div>
+                            <div class="channel-url">${escapeHtml(url.length > 60 ? url.substring(0,57)+'…' : url)}</div>
+                        </div>
+                        <div class="channel-actions">
+                            <button class="secondary edit-channel" data-key="${key}">✏️ Edit</button>
+                            <button class="danger delete-channel" data-key="${key}" data-name="${escapeHtml(name)}">🗑️ Delete</button>
+                        </div>
+                    </div>`;
+            });
+            channelsListDiv.innerHTML = html;
+
+            // Attach edit listeners
+            document.querySelectorAll('.edit-channel').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const key = btn.getAttribute('data-key');
+                    const item = document.querySelector(`.channel-item[data-key="${key}"]`);
+                    const nameElem = item?.querySelector('.channel-name');
+                    const urlElem = item?.querySelector('.channel-url');
+                    // Retrieve full data from Firebase for accurate editing
+                    channelsRef.child(key).once('value').then(snap => {
+                        const ch = snap.val();
+                        if (ch) {
+                            enterEditMode(key, ch);
+                        }
+                    }).catch(err => {
+                        showStatus('❌ Failed to load channel data', 'error');
+                        console.error(err);
+                    });
+                });
+            });
+
+            // Attach delete listeners
+            document.querySelectorAll('.delete-channel').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const key = btn.getAttribute('data-key');
+                    const name = btn.getAttribute('data-name');
+                    if (confirm(`Delete channel "${name}"? This will remove it instantly from the website.`)) {
+                        setButtonLoading(btn, true);
+                        channelsRef.child(key).remove()
+                            .then(() => {
+                                showStatus(`✅ "${name}" deleted`, 'success');
+                                loadChannels();
+                                // If we were editing this channel, reset form
+                                if (editingKey === key) resetFormToAddMode();
+                            })
+                            .catch(err => {
+                                showStatus(`❌ Error: ${err.message}`, 'error');
+                                setButtonLoading(btn, false);
+                            });
+                    }
+                });
+            });
+
+        } catch (err) {
+            channelsListDiv.innerHTML = `<div class="empty-msg">⚠️ Failed to load channels: ${err.message}</div>`;
+        }
+    }
+
+    // ---------- Add / Update Channel ----------
+    submitChannelBtn.addEventListener('click', async () => {
+        const name = chNameInput.value.trim();
+        const url = chUrlInput.value.trim();
+        const logo = chLogoInput.value.trim();
+
+        if (!name || !url) {
+            showStatus('❌ Channel name and URL are required', 'error');
+            return;
+        }
+
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+            showStatus('⚠️ URL must start with http:// or https://', 'error');
+            return;
+        }
+
+        const channelData = {
+            name: name,
+            url: url,
+            logo: logo || ''
+        };
+
+        setButtonLoading(submitChannelBtn, true);
+
+        try {
+            if (editingKey) {
+                // Update existing channel
+                await channelsRef.child(editingKey).update(channelData);
+                showStatus(`✅ "${name}" updated successfully!`, 'success');
+                resetFormToAddMode(); // reset form after edit
+            } else {
+                // Push new channel
+                await channelsRef.push({
+                    ...channelData,
+                    addedAt: firebase.database.ServerValue.TIMESTAMP
+                });
+                showStatus(`✅ "${name}" added successfully!`, 'success');
+                chNameInput.value = '';
+                chUrlInput.value = '';
+                chLogoInput.value = '';
+            }
+            await loadChannels(); // refresh list
+        } catch (err) {
+            showStatus(`❌ Firebase error: ${err.message}`, 'error');
+        } finally {
+            setButtonLoading(submitChannelBtn, false);
+        }
+    });
+
+    // ---------- Delete ALL Channels ----------
+    clearAllBtn.addEventListener('click', () => {
+        if (confirm('⚠️ DANGER: This will delete EVERY live TV channel. Are you absolutely sure?')) {
+            setButtonLoading(clearAllBtn, true);
+            channelsRef.remove()
+                .then(() => {
+                    showStatus('🗑️ All channels have been deleted.', 'success');
+                    loadChannels();
+                    resetFormToAddMode();
+                })
+                .catch(err => showStatus(`❌ Delete failed: ${err.message}`, 'error'))
+                .finally(() => setButtonLoading(clearAllBtn, false));
+        }
+    });
+
+    // Initialize list if already unlocked
+    if (isUnlocked) loadChannels();
+</script>
+</body>
+</html>
